@@ -120,58 +120,32 @@ contract fractionalizedAuction is ERC1155 {
         });
         
         //AFTER
-        previousSection = block.number;
+        previousSection = currentSection(_auctionId);
     }
 
     //@notice bidでwinnerになった場合、勝った数だけトランスファーできる
-    function claim(uint256 _auctionId) public {
-        auctionData memory _auction = _auctionData[_auctionId];
+    function claimOfBatch(uint256 _auctionId) public {
+        for(uint256 i=0; i<_winningAuctions[msg.sender].length; i++) {
 
-        //require(msg.sender == _auction.highestBider, "you cant");
-        //require(_auction.claimed == false, "already minted");
+            fractionalAuctionData memory _fractional = _fractionalAuctions[_auctionId][i];
 
-        // claimableをリセット
-        //_auction[_auctionId].claimed = true;
+            require(msg.sender == _fractional.winner, "you cant");
+            require(_fractional.claimed == false, "already minted");
+            _fractionalAuctions[_auctionId][i].claimed = true;
 
-        // fNFTを送る
-        //require(_user2Id2balances[msg.sender][_auctionId] > 0, "canot claim");
-        //_mintFNFT(msg.sender, _auctionId, _user2Id2balances[msg.sender][_auctionId]);
+            // fNFTを送る
+            _mintFNFT(msg.sender, _auctionId, 1);
+        }
     }
 
     //@notice オークションを終了させる（オーナーは、プロトコルからお金を引き出し）
     //@param _auctionId: オークションID
     function closeAuction(uint256 _auctionId) public OnlyAuctionHost(_auctionId) {
 
-        //最後の入札分のTXを実行
-        //_Id2User2PayedAmounts[_auctionId][_auction[_auctionId].highestBider] += _auction[_auctionId].maxBid;
-        //_user2id2block[_auction[_auctionId].highestBider][_auctionId] = previousBlock;
-
-        //@notice 前回ブロックの最高入札者に対してバランスをインクリメントする。後でclaimしてミントできる
-        //_user2Id2balances[_auction[_auctionId].highestBider][_auctionId] += 1;
-
-        //_auction[_auctionId].maxBid = 0;
-        //_auction[_auctionId].highestBider = address(0);
-    }
-
-
-    //@notice 最後にオークションプロトコルからNFTを引き出す
-    //        計算方法が３通りあるが未実装
-    //@param _auctionId: オークションID
-    function withdrawNFT(uint256 _auctionId) public {
-        //address topUser = winnerAddress[0];
-        //address secondUser;
-        /*
-        for(uint256 i=1; i<_auction[_auctionId].separateTo; i++) {
-            if(topUser < winnerAddress[i]){
-                topUser = winnerAddress[i];
-                secondUser = topUser;
-            } else if (topUser == winnerAddress[i]) {
-                if(_Id2User2PayedAmounts[_auctionId][topUser] < _Id2User2PayedAmounts[_auctionId][secondUser]){
-                topUser = secondUser;
-                }
-            }
-        }
-        */
+        //FORPREVIOUS
+        address _winner = _fractionalAuctions[_auctionId][previousSection].winner;
+        _winningAuctions[_winner].push(previousSection);
+        _winnerPaidAmount[_winner] = _fractionalAuctions[_auctionId][previousSection].bidAmount;
 
         //address _contractAddr = _auction[_auctionId].contractAddr;
         //uint256 _tokenId = _auction[_auctionId].tokenId;
